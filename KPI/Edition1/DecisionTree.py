@@ -292,6 +292,9 @@ class FileInput:
         
         return data,labels
 
+ 
+
+
 if __name__=="__main__":  
     data,labels = FileInput().getDataAndLabels()
     tree = DT()
