@@ -3,14 +3,27 @@
 @author: YANG
 '''
 
-from Edition2.FileInput import FileInput
+from FileInput import FileInput
+ 
 import math
 import pickle
 import os
 
 ENTROPYLIMIT = 0.5
+'''
+DATA INFO 
+0~3：时间戳、小区名等无效信息
 
+  9: 小区下行速率
+ 17：RRC建立成功率
+ 25：E-RAB建立成功率
+ 26：E-RAB掉话率
+ 27：同频切换成功率
+ 18,19,23,37,45,51,56经过之前的检测，都是完全无变化项，即给分类带来零帮助
+ 28,29,30有大量的NIL数据
 
+'''
+ 
 class Train():
     '''
     这个Node的定义是之前版本的遗留物，留在这里当做启发
@@ -35,10 +48,18 @@ class Train():
         '''
         self.tree = {}
  
-    def Train(self, path, fileName):
-        features, labels = FileInput.Input(path, fileName)
-        self.TreeGrowth(features, labels)
-          
+    def Train(self, path="C:\\users\yang\desktop\data", fileName="1"):
+        cols = self.DefineCols(label=17, filteredCols=[i for i in range(4)]+[27,28,29,30])
+        features, labels = FileInput().InputForTrain(path, fileName,cols=cols)
+        self.BuildTree(features, labels)
+    
+    def DefineCols(self, label=-1, filteredCols = []):
+        cols = [0]*61
+        cols[label] = 1
+        for index in filteredCols:
+            cols[index] = -1
+        return cols
+
     def BuildTree(self, features, labels):
         filteredFea = [0]*len(features[0])
         filteredSam = [0]*len(labels)
@@ -55,7 +76,7 @@ class Train():
             isLeaf = True
         self.TreeGrowth(features, labels, filteredFea, filteredSam, 1, False, isLeaf)
  
-        writer = open(os.getcwd()+'\model','w')
+        writer = open(os.getcwd()+'\model','wb')
         pickle.dump(self.tree, writer)
         writer.close()
   
@@ -65,10 +86,10 @@ class Train():
         '''
         if(isLeaf): 
             if(isLeft):
-                entropy = [self.tree[parentPosition][0][1],-1,-1]
+                entropy = [self.tree[parentPosition][2][1],-1,-1]
                 self.tree[2*parentPosition] = [-1, -1, entropy]
             else:
-                entropy = [self.tree[parentPosition][0][2],-1,-1]
+                entropy = [self.tree[parentPosition][2][2],-1,-1]
                 self.tree[2*parentPosition+1] = [-1, -1, entropy]
             return
 
@@ -213,17 +234,18 @@ class Train():
                   (SmallerSum/(LargerSum+SmallerSum))*SmallerEntropy
         
         return entropy, SmallerEntropy, LargerEntropy
-
-
+ 
     def Pruning(self):
         pass
 
+import time
 
-
-
-
-
-
+if __name__=="__main__":
+    #help(time.strftime)
+    #help(time.localtime)
+    print(time.strftime("%H:%M:%S",time.localtime()))
+    Train().Train()
+    print(time.strftime("%H:%M:%S",time.localtime()))
 
 
 
