@@ -4,9 +4,9 @@
 '''
 
 import pickle 
-from FileInput import FileInput
+from Edition2.FileInput import FileInput
 import os
-from Train import Train
+from Edition2.Train import Train
 
 class Predict():
     '''
@@ -41,7 +41,7 @@ class Predict():
     '''
     def Predict(self):
         features, labels = FileInput().InputForPredict(fileName="1", rowBegin=8, cols=Train().DefineCols(label=17, \
-            filteredCols=[i for i in range(4)]+[27,28,29,30]), cellId = "142560_Ang_Mo_Kio_St_22_Blk_207")
+            filteredCols=[i for i in range(4)]+[27,28,29,30]), cellId = "146680_Ang_Mo_Kio_Ave_1_Blk_331")
         print(features.shape) 
 
 
@@ -61,10 +61,12 @@ class Predict():
         l = sorted(RootCause.items(), key=lambda x:x[1], reverse = True)
         for item in l:
             try:
-                print(item,dic[item[0]])
+                print(item[0])
             except Exception as e:
                 print(e)
-        print(dic)
+        return
+        for item in dic:
+            print(item, dic[item])
 
     def findPath(self, feature):
         '''
@@ -84,8 +86,27 @@ class Predict():
             path.append(node)
         return path
 
+
+    def VisualizeTree(self):
+        i = 1
+        height = 0
+        while(height<10):
+            while(i<2**height):
+                if(self.tree.__contains__(i)):
+                    print(str(self.tree[i][0])+" ", end="")
+                else:
+                    print(" ", end="")
+                i += 1
+            print()
+            height += 1
+
+
+import math
 if __name__=="__main__":
-    Predict().Predict()
+    obj = Predict()
+    print(len(obj.tree))
+    #VisualizeTree(obj.tree)
+    obj.Predict()
 
 
 

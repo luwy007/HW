@@ -1,18 +1,19 @@
 # -*- coding=utf-8 -*-
 '''
+Created on 2016/1/9
+
 @author: YANG
 '''
-
-from Edition2.FileInput import FileInput
+from FileInput import FileInput
  
 import math
 import pickle
 import os
 import random
 import numpy as np
+import time
 
-
-ENTROPYLIMIT = 0.5
+ENTROPYLIMIT = 0.1
 '''
 DATA INFO 
 0~3：时间戳、小区名等无效信息
@@ -26,8 +27,21 @@ DATA INFO
  28,29,30有大量的NIL数据
 
 '''
- 
-class Train():
+
+'''
+    cellId in 1.xls
+    3 206 0.01456 132180_Ang_Mo_Kio_St_31_Blk_319
+    8 412 0.01942 142560_Ang_Mo_Kio_St_22_Blk_207
+    5 412 0.01214 146150_Bishan_St_23_Blk_288
+    2 206 0.00971 144760_Sin_Ming_Autocare
+    5 206 0.02427 130760_Ang_Mo_Kio_Ave_10_Blk_405
+    45 412 0.10922 146680_Ang_Mo_Kio_Ave_1_Blk_331 
+
+'''
+
+
+
+class RCA():
     '''
     这个Node的定义是之前版本的遗留物，留在这里当做启发
 
@@ -74,17 +88,20 @@ class Train():
         tempF = np.array(tempF[1:,:])
         
         return tempF, tempL
-        
-        
+    
     def Train(self, path="C:\\users\yang\desktop\data", fileName="1",ratio=1):
         cols = self.DefineCols(label=17, filteredCols=[i for i in range(4)]+[27,28,29,30])
-        features, labels = FileInput().InputForTrain(path, fileName,cols=cols)
-        #print(features.shape)
-        features,labels = self.AdjustPosNeg(features,labels,ratio)
-        #print(features.shape)
+        featuresDic, labelsDic = FileInput().InputForTrain(path, fileName,cols=cols)
+        for item in featuresDic:
+            if(item!="146680_Ang_Mo_Kio_Ave_1_Blk_331"):
+                continue
+            features, labels = self.AdjustPosNeg(featuresDic[item],labelsDic[item],ratio)
+            self.tree = {}
+            self.BuildTree(features, labels)
+            writer = open(os.getcwd()+'\%s'%item,'wb')
+            pickle.dump(self.tree, writer)
+            writer.close()
         
-        self.BuildTree(features, labels)
-    
     def DefineCols(self, label=-1, filteredCols = []):
         cols = [0]*61
         cols[label] = 1
@@ -108,10 +125,6 @@ class Train():
             isLeaf = True
         self.TreeGrowth(features, labels, filteredFea, filteredSam, 1, False, isLeaf)
  
-        writer = open(os.getcwd()+'\model','wb')
-        pickle.dump(self.tree, writer)
-        writer.close()
-  
     def TreeGrowth(self, features, labels, filteredFea, filteredSam, parentPosition, isLeft, isLeaf):
         '''
         如果是计算父节点时发现此节点不添加任何判断属性，熵就已经达标的话，便将此节点定义为叶节点
@@ -267,19 +280,104 @@ class Train():
         
         return entropy, SmallerEntropy, LargerEntropy
  
+    def FindPath(self, feature):
+        '''
+        记录每条item在决策树中游走的过程，记录经过的节点，及各个节点的特性
+        '''
+        path = []
+        position = 1
+        node = self.tree[position]
+        path.append([position,node])
+        while(node[0]!=-1):
+            if(feature[node[0]]<node[1]):
+                position *= 2
+            else:
+                position *= 2
+                position += 1
+            node = self.tree[position]
+            path.append([position,node])
+        return path
+ 
+    def VisualizeTree(self):
+        print("nodes of the tree is %i"%len(self.tree))
+        max = -1
+        for i in self.tree:
+            if(i>max):
+                max = i 
+        print("the height of the tree is %i"%(int(math.log2(max))+1))
+        
+        i = 1
+        height = 0
+        while(height<10):
+            while(i<2**height):
+                if(self.tree.__contains__(i)):
+                    print(str(self.tree[i][0])+" ", end="")
+                else:
+                    print(" ", end="")
+                i += 1
+            print()
+            height += 1
+ 
     def Pruning(self):
+        
         pass
+    
+    def Predict(self, path="C:\\users\yang\desktop\data", fileName="1", ratio=1):
+        cols = self.DefineCols(label=17, filteredCols=[i for i in range(4)]+[27,28,29,30])
+        featuresDic, labelsDic = FileInput().InputForPredict(path, fileName,cols=cols)
+        
+        for item in featuresDic:
+            if(item!="146680_Ang_Mo_Kio_Ave_1_Blk_331"):
+                continue
+            reader = open(os.getcwd()+'\%s'%item,'rb')
+            self.tree = pickle.load(reader)
+            reader.close()
+            leafNodeDic = {}
+            features = featuresDic[item]
+            labels = labelsDic[item]
+            pathes = []
+            for index in range(len(labels)):
+                if(labels[index]==-1):
+                    path = self.FindPath(features[index])
+                    pathes.append(path)
+                    continue
+                    for item in path:
+                        print(item[0], end=" ")
+                    print()
+                    try:
+                        leafNodeDic[path[-1][0]] += 1
+                    except:
+                        leafNodeDic[path[-1][0]] = 1
+            treeStrut = []
+            for path in pathes:
+                for item in path:
+                    try:
+                        treeStrut[int(math.log2(item[0]))][item[0]] += 1
+                    except:
+                        try:
+                            treeStrut[int(math.log2(item[0]))][item[0]] = 1
+                        except:
+                            treeStrut.append({})
+                            treeStrut[int(math.log2(item[0]))][item[0]] = 1
+                        
+            for index in range(len(treeStrut)):
+                dic = treeStrut[index]
+                l = sorted(dic.items(), key=lambda x:x[0])
+                print("                           ",end="")
+                for item in l:
+                    print(item,end = "")
+                print()
 
-import time
+            #print(item)
+            #print(leafNodeDic)
+            #self.VisualizeTree()
+
 
 if __name__=="__main__":
+    
     print("Train starts: "+time.strftime("%H:%M:%S",time.localtime()))
     print(".....")
-    Train().Train()
+    RCA().Train(ratio=1.5)
     print("Train ends: "+time.strftime("%H:%M:%S",time.localtime()))
-
-
-
-
-
-
+    RCA().Predict()
+    cols = RCA().DefineCols(label=17, filteredCols=[i for i in range(4)]+[27,28,29,30]) 

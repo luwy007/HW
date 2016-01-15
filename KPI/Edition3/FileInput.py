@@ -41,19 +41,27 @@ class FileInput():
             return 
         sheet = book.sheet_by_index(0)
         
-        features = []
-        for colIndex in range(len(cols)):
-            if(cols[colIndex]!=0):
-                continue
+        featuresDic = {}
+        for rowIndex in range(rowBegin,sheet.nrows):
             temp = []
-            for rowIndex in range(rowBegin,sheet.nrows):
+            for colIndex in range(len(cols)):
+                if(cols[colIndex]!=0):
+                    continue
                 try:
-                    temp.append(float(sheet.cell_value(rowIndex, colIndex)))
+                    temp.append(float(sheet.cell_value(rowIndex,colIndex)))
                 except:
                     temp.append(0)
-                    print("NIL", rowIndex, colIndex) 
-            features.append(temp)
-        features = np.array(features).transpose()
+                    print("NIL ERROR %i %i"%(rowIndex,colIndex))
+            try:
+                featuresDic[sheet.cell_value(rowIndex,2)].append(temp)
+            except:
+                featuresDic[sheet.cell_value(rowIndex,2)] = [temp]
+
+        for item in featuresDic:
+            featuresDic[item] = np.array(featuresDic[item])
+
+
+
         
         labelIndex = -1
         for item in cols:
@@ -64,19 +72,21 @@ class FileInput():
         此处对正负类的划分规则，相较于工业上的阈值区分要更加严格。
         定义当指标为非完美时，便为负类，以此解决数据倾斜问题，并且可以尽可能捕捉到更多的根因识别有效信息
         '''
-        labels = []
-        for item in sheet.col_values(labelIndex)[rowBegin:]:
-            if(item==100):
-                labels.append(1)
-            else:
-                labels.append(-1)
-        
-        return features, labels
+        labelsDic = {}
+        for rowIndex in range(rowBegin,sheet.nrows):
+            label = -1
+            if(sheet.cell_value(rowIndex,labelIndex)==100):
+                label = 1
+            try:
+                labelsDic[sheet.cell_value(rowIndex,2)].append(label)
+            except:
+                labelsDic[sheet.cell_value(rowIndex,2)] = [label]
 
-    
+        return featuresDic, labelsDic
 
-    def InputForPredict(self, path="C:\\users\yang\desktop\data", fileName="1", rowBegin=8, cols=[-2]*61, cellId=""):
+    def InputForPredict(self, path="C:\\users\yang\desktop\data", fileName="1", rowBegin=8, cols=[-2]*61):
         '''
+        参数说明
         # path is where the training data located
         # fileName is the name of training data
         # rowBegin is the row index from where the real data stored
@@ -89,34 +99,48 @@ class FileInput():
             return 
         sheet = book.sheet_by_index(0)
         
+        featuresDic = {}
+        for rowIndex in range(rowBegin,sheet.nrows):
+            temp = []
+            for colIndex in range(len(cols)):
+                if(cols[colIndex]!=0):
+                    continue
+                try:
+                    temp.append(float(sheet.cell_value(rowIndex,colIndex)))
+                except:
+                    temp.append(0)
+                    print("NIL ERROR %i %i"%(rowIndex,colIndex))
+            try:
+                featuresDic[sheet.cell_value(rowIndex,2)].append(temp)
+            except:
+                featuresDic[sheet.cell_value(rowIndex,2)] = [temp]
+
+        for item in featuresDic:
+            featuresDic[item] = np.array(featuresDic[item])
+
+
+
+        
         labelIndex = -1
         for item in cols:
             labelIndex += 1
             if(item==1):
                 break
+        '''
+        此处对正负类的划分规则，相较于工业上的阈值区分要更加严格。
+        定义当指标为非完美时，便为负类，以此解决数据倾斜问题，并且可以尽可能捕捉到更多的根因识别有效信息
+        '''
+        labelsDic = {}
+        for rowIndex in range(rowBegin,sheet.nrows):
+            label = -1
+            if(sheet.cell_value(rowIndex,labelIndex)>99.5):
+                label = 1
+            try:
+                labelsDic[sheet.cell_value(rowIndex,2)].append(label)
+            except:
+                labelsDic[sheet.cell_value(rowIndex,2)] = [label]
 
-        labels = []
-        for item in sheet.col_values(labelIndex)[rowBegin:]:
-            if(item<99.5):
-                labels.append(-1)
-            else:
-                labels.append(1)
-
-
-        features = []
-        for rowIndex in range(rowBegin, sheet.nrows):
-            if(sheet.cell_value(rowIndex, 2)!=cellId or labels[rowIndex-rowBegin]!=-1):
-                continue
-            temp = []
-            for colIndex in range(len(cols)):
-                if(cols[colIndex]!=0):
-                    continue
-                temp.append(sheet.cell_value(rowIndex,colIndex))
-            features.append(temp)
-
-        return np.array(features), labels
-
-
+        return featuresDic, labelsDic
 
     def InputGetDic(self, path="C:\\users\yang\desktop\data", fileName="1", nameRow=6, cols=[-2]*61):
         try:
@@ -152,7 +176,7 @@ if __name__=="__main__":
         except:
             cellDic[sheet.cell_value(index, 2)] = 1
         try:
-            if(sheet.cell_value(index,labelIndex)<99.5):
+            if(sheet.cell_value(index,labelIndex)<=99.5):
                 try:
                     problemCell[sheet.cell_value(index,2)] += 1
                 except:
