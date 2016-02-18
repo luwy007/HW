@@ -4,8 +4,7 @@ Created on 2016/1/9
 
 @author: YANG
 '''
-from FileInput import FileInput
- 
+from Edition3.FileInput import FileInput
 import math
 import pickle
 import os
@@ -377,7 +376,7 @@ if __name__=="__main__":
     
     print("Train starts: "+time.strftime("%H:%M:%S",time.localtime()))
     print(".....")
-    RCA().Train(ratio=1.5)
+    #RCA().Train(ratio=1.5)
     print("Train ends: "+time.strftime("%H:%M:%S",time.localtime()))
     RCA().Predict()
-    cols = RCA().DefineCols(label=17, filteredCols=[i for i in range(4)]+[27,28,29,30]) 
+    #cols = RCA().DefineCols(label=17, filteredCols=[i for i in range(4)]+[27,28,29,30]) 
